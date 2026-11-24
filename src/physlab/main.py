@@ -1,100 +1,59 @@
-from physlab.models.Atome import Atome
-from physlab.models.Simulation import Simulation
 import numpy as np
 
-if __name__ == "__main__":
-    hydrogene = Atome(
+from physlab.models.Atome import Atome
+from physlab.models.Domaine import Domaine
+from physlab.models.Simulation import Simulation
+
+# --- Paramètres de la simulation ---
+LONGUEURS = (20.0, 20.0, 20.0)   # m : dimensions du domaine (Lx, Ly, Lz)
+V0 = (10.0, 20.0, 5.0)           # m/s : vitesse initiale de l'atome de test
+DT = 1e-3                        # s : pas de temps
+T_FINAL = 10.0                   # s : durée simulée
+EXPORT_EVERY = 10                # on exporte un pas sur 10
+EXPORT_PATH = "export/simulation"
+
+
+def creer_atome() -> Atome:
+    """Atome de test, au centre du domaine."""
+    return Atome(
         formuleChimique="H",
         masse=1.67e-27,
-        rayon=5.3e-11,
+        rayon=0.5,               # m, grand pour être visible dans ParaView
         position=(0.0, 0.0, 0.0),
-        vitesse=(100.0, 0.0, 0.0),
+        vitesse=V0,
     )
 
-    oxygene = Atome(
-        formuleChimique="O",
-        masse=2.66e-26,
-        rayon=6.0e-11,
-        position=(2.5e-10, 0.0, 0.0),
-        vitesse=(-50.0, 20.0, 0.0),
-    )
 
-    helium = Atome(
-        formuleChimique="He",
-        masse=6.64e-27,
-        rayon=3.1e-11,
-        position=(-2.5e-10, 0.0, 0.0),
-        vitesse=(-80.0, 30.0, 0.0),
-    )
+def simuler(sim: Simulation, atome: Atome, domaine: Domaine) -> None:
+    """Avance la simulation, exporte les images et vérifie que l'atome reste dans le domaine."""
+    demi = np.array([domaine.longX, domaine.longY, domaine.longZ]) / 2
+    nb_pas = int(round(T_FINAL / DT))
 
-    carbone = Atome(
-        formuleChimique="C",
-        masse=1.99e-26,
-        rayon=7.0e-11,
-        position=(0.0, 2.5e-10, 0.0),
-        vitesse=(40.0, -60.0, 10.0),
-    )
-
-    azote = Atome(
-        formuleChimique="N",
-        masse=2.33e-26,
-        rayon=6.5e-11,
-        position=(0.0, -2.5e-10, 0.0),
-        vitesse=(-30.0, 50.0, -20.0),
-    )
-
-    fluor = Atome(
-        formuleChimique="F",
-        masse=3.15e-26,
-        rayon=5.0e-11,
-        position=(2.5e-10, 2.5e-10, 0.0),
-        vitesse=(70.0, 0.0, 40.0),
-    )
-
-    neon = Atome(
-        formuleChimique="Ne",
-        masse=3.35e-26,
-        rayon=3.8e-11,
-        position=(-2.5e-10, 2.5e-10, 0.0),
-        vitesse=(-20.0, -70.0, 0.0),
-    )
-
-    silicium = Atome(
-        formuleChimique="Si",
-        masse=4.66e-26,
-        rayon=1.1e-10,
-        position=(2.5e-10, -2.5e-10, 0.0),
-        vitesse=(10.0, 10.0, -30.0),
-    )
-
-    soufre = Atome(
-        formuleChimique="S",
-        masse=5.32e-26,
-        rayon=1.0e-10,
-        position=(-2.5e-10, -2.5e-10, 0.0),
-        vitesse=(-60.0, 0.0, 20.0),
-    )
-
-    argon = Atome(
-        formuleChimique="Ar",
-        masse=6.63e-26,
-        rayon=7.1e-11,
-        position=(0.0, 0.0, 2.5e-10),
-        vitesse=(25.0, 45.0, 35.0),
-    )
-
-    atomes = np.array([
-        hydrogene, oxygene, helium, carbone, azote,
-        fluor, neon, silicium, soufre, argon,
-    ])
-    domaine = (1e-9, 1e-9, 1e-9)
-
-    sim = Simulation(atomes=atomes, domaine=domaine)
-    print(sim)
-
-    # Export
-    sim.open_export("export/simulation")
+    sim.open_export(EXPORT_PATH)
     try:
         sim.write_step_into_export(time=0.0)
+        for n in range(1, nb_pas + 1):
+            sim.step(DT)
+            assert np.all(np.abs(atome.position) <= demi), f"Atome hors du domaine au pas {n}"
+            if n % EXPORT_EVERY == 0:
+                sim.write_step_into_export(time=n * DT)
     finally:
-        sim.close_export() 
+        sim.close_export()
+
+
+def main() -> None:
+    domaine = Domaine(*LONGUEURS)
+    atome = creer_atome()
+    sim = Simulation(np.array([atome]), domaine)
+    print(sim)
+
+    e0 = atome.mechanical_energy()
+    simuler(sim, atome, domaine)
+
+    print(f"Position finale : {atome.position} m")
+    print(f"Vitesse finale  : {atome.vitesse} m/s")
+    print(f"Dérive de l'énergie mécanique : {atome.mechanical_energy() - e0:.3e} J")
+
+
+if __name__ == "__main__":
+    main()

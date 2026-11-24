@@ -4,11 +4,12 @@ import h5py as h5
 import numpy as np
 
 from physlab.models.Atome import Atome
+from physlab.models.Domaine import Domaine
 
 
 class Simulation:
-    def __init__(self, atomes: np.ndarray, domaine: tuple[float, float, float]):
-        self.domaine: np.ndarray = np.array(domaine, dtype=float)
+    def __init__(self, atomes: list[Atome] | np.ndarray, domaine: Domaine):
+        self.domaine: Domaine = domaine
         self.atomes: np.ndarray = np.array(atomes)
 
         # Export HDF5 / XDMF
@@ -18,10 +19,25 @@ class Simulation:
         self.step_count = 0
 
     def __str__(self):
-        result = ""
+        result = str(self.domaine) + "\n"
         for atom in self.atomes:
             result += str(atom) + "\n"
         return result
+
+    # ------------------------------------------------------------------
+    # Dynamique
+    # ------------------------------------------------------------------
+    def step(self, dt: float) -> None:
+        """
+        Avance tous les atomes d'un pas de temps dt (Euler explicite), puis
+        applique la réflexion spéculaire sur les parois du domaine.
+ 
+        Parameters:
+            dt (float): pas de temps (s)
+        """
+        for atome in self.atomes:
+            atome.move(dt)
+            self.domaine.reflection(atome)
 
     # ------------------------------------------------------------------
     # Export HDF5 / XDMF
@@ -29,11 +45,13 @@ class Simulation:
     def _domain_corners(self) -> np.ndarray:
         """
         Les 8 sommets du domaine, centré sur l'origine :
-        [-lx/2, lx/2] x [-ly/2, ly/2] x [-lz/2, lz/2], dans l'ordre
+        [-Lx/2, Lx/2] x [-Ly/2, Ly/2] x [-Lz/2, Lz/2], dans l'ordre
         attendu par la topologie Hexahedron de XDMF (face du bas dans le
         sens trigonométrique, puis face du haut).
         """
-        hx, hy, hz = self.domaine / 2
+        hx = self.domaine.longX / 2
+        hy = self.domaine.longY / 2
+        hz = self.domaine.longZ / 2
         return np.array(
             [
                 (-hx, -hy, -hz),
@@ -79,10 +97,10 @@ class Simulation:
         self.h5_file.attrs["number_of_atoms"] = len(self.atomes)
 
         domain_group = self.h5_file.create_group("domain")
-        domain_group.attrs["lx"] = self.domaine[0]
-        domain_group.attrs["ly"] = self.domaine[1]
-        domain_group.attrs["lz"] = self.domaine[2]
-        domain_group.attrs["volume"] = float(np.prod(self.domaine))
+        domain_group.attrs["lx"] = self.domaine.longX
+        domain_group.attrs["ly"] = self.domaine.longY
+        domain_group.attrs["lz"] = self.domaine.longZ
+        domain_group.attrs["volume"] = self.domaine.Volume()
         domain_group.create_dataset("corners", data=corners)
         self.h5_file.flush()
 

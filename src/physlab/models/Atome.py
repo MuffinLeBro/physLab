@@ -28,14 +28,15 @@ class Atome:
         #principe fondamental de la dynamique : F = m*a
         #l'atome est un projectile sans interaction : la seule force est le poids
         #F = m*g  (en N)
-        gravity : float = cst.G #constante 
-        return self.masse * gravity
+   
+        g = np.array([0.0, -cst.g, 0.0])
+        return self.masse * g
     def acceleration(self)-> np.ndarray:
         #L'accélération est la dérviée de la vitesse et la vitesse et la dérivée de la position
         # a = F/m = m*g/m = g --> la masse se simplifie donc tous les atomes ont la même accélération
         a = self.force()/self.masse
         return a
-    def moove(self,dt : float,) -> None: 
+    def move(self,dt : float,) -> None: 
         #dv/dt = g = a
         #dr/dt = v
          #En isolant v(t+dt) et r(t+dt) on obtient la méthode d'Euler explicite :
@@ -54,7 +55,7 @@ class Atome:
     def potential_energy(self) -> float:
         #E_pot = m*g*y, le sol (y = 0) est la référence
         gravity : float = cst.G #constante 
-        return self.masse * (-gravity[1]) * self.position[1]
+        return self.masse * cst.g * self.position[1]
  
     def mechanical_energy(self) -> float:
         #E_mec = E_cin + E_pot
