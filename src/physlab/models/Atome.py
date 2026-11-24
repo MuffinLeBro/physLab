@@ -63,3 +63,31 @@ class Atome:
         #Avec Euler explicite elle dérive : +1/2*m*g²*dt² par pas, donc
         #+1/2*m*g²*T*dt sur toute la simulation (proportionnel à dt : ordre 1).
         return self.kinetic_energy() + self.potential_energy()
+
+    """
+    9.1 :
+    ================================================================
+    Interaction : Collision élastique entre les 2 sphères. La force est dirigée selon la ligne qui joint les centres lors du contact
+    Conservations : la quantité de movuement totale et l'énergie cinétique totale sont conservée
+    Hypothèses : Gaz dilué, atomes assimilés à des sphères lisse (hard sphere, sans frottement), colllision binaires et instantanées, aucune force extérieure pendant le choc pas de degré de liberté internes
+    =================================================================
+    9.2 :
+    ================================================================
+    1. Choco frontal, masses égales : v1 = (+v,0,0), v2(-v,0,0). les vitesses s'échangent 
+    2. Choco frontal, masses différentes : m2 = 4m1 On vérifie la quantité de mouvement et l'énergie cinétique.
+    3. Cibles au repos, choc excentré : v2 = 0 avec un paramètre d'impact non nul. Pour des masses égales, les deux vitesses finales sont perpendiculaires. Cela contrôle l'influence de l'angle de contact
+    4. Atomes qui s'éloignent, déja en contact : aucun changement de vitesses. Cela évite qu'une collision soit appliquée deux fois
+    ================================================================
+    """
+    def en_collision(self, autre: "Atome") -> bool:
+        distance = np.linalg.norm(self.position - autre.position)
+        return distance <= self.rayon + autre.rayon
+    def collision(self, autre: "Atome") -> None:
+        n = self.position - autre.position
+        n = n / np.linalg.norm(n)
+        u = np.dot(self.vitesse - autre.vitesse, n)
+        if u >= 0:          # ils s'éloignent déjà : rien à faire
+            return
+        M = self.masse + autre.masse
+        self.vitesse = self.vitesse - 2 * autre.masse / M * u * n
+        autre.vitesse = autre.vitesse + 2 * self.masse / M * u * n

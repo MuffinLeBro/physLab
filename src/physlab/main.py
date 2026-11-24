@@ -25,7 +25,6 @@ def creer_atome() -> Atome:
 
 
 def simuler(sim: Simulation, atome: Atome, domaine: Domaine) -> None:
-    """Avance la simulation, exporte les images et vérifie que l'atome reste dans le domaine."""
     demi = np.array([domaine.longX, domaine.longY, domaine.longZ]) / 2
     nb_pas = int(round(T_FINAL / DT))
 
